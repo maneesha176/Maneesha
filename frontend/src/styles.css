@@ -158,12 +158,11 @@
 
 @media (max-width: 768px) {
     .nav-links {
-        @apply overflow-x-auto w-full flex justify-center items-center gap-6 pb-2 custom-scrollbar;
-        scroll-snap-type: x mandatory;
+        @apply overflow-x-auto w-full flex justify-center items-center gap-6 pb-2 custom-scrollbar snap-x snap-mandatory;
     }
 
     .nav-links a {
-        @apply whitespace-nowrap scroll-snap-align-center;
+        @apply whitespace-nowrap snap-center;
     }
 
     .table-container {

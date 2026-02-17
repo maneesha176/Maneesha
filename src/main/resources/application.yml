@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: interview-slot
+  datasource:
+    url: jdbc:postgresql://localhost:5432/interviewslot
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      
+  cache:
+    type: redis
+    redis:
+      time-to-live: 300000 # 5 minutes
+
+app:
+  scheduling:
+    max-interviews-per-day: 3
+    max-interviews-per-week: 15
+    buffer-time-minutes: 15
+    default-working-hours:
+      start: "09:00"
+      end: "18:00"
+  notification:
+    enabled: true
+    email:
+      from: noreply@interviewslot.com
+
+logging:
+  level:
+    com.interviewslot: DEBUG
+    org.hibernate.SQL: DEBUG

@@ -1,0 +1,641 @@
+<div class="app-container">
+  <div class="gradient-bg"></div>
+  <div class="mesh-gradient"></div>
+
+  <!-- Navigation -->
+  <nav class="nav-bar">
+    <div class="logo" (click)="handleTabChange('dashboard')">InterviewSlot</div>
+    <div class="flex items-center gap-12">
+      <div class="flex gap-8 text-sm font-medium">
+        <a href="#" [class.active-link]="activeTab() === 'dashboard'"
+          (click)="$event.preventDefault(); handleTabChange('dashboard')">Dashboard</a>
+        <a href="#" [class.active-link]="activeTab() === 'candidates'"
+          (click)="$event.preventDefault(); handleTabChange('candidates')">Candidates</a>
+        <a href="#" [class.active-link]="activeTab() === 'reports'"
+          (click)="$event.preventDefault(); handleTabChange('reports')">Reports</a>
+        <a href="#" [class.active-link]="activeTab() === 'calendar'"
+          (click)="$event.preventDefault(); handleTabChange('calendar')">Calendar</a>
+      </div>
+      <button class="btn-primary" (click)="isScheduleModalOpen.set(true)">
+        <lucide-angular [img]="PlusIcon" size="20"></lucide-angular> Schedule New
+      </button>
+    </div>
+  </nav>
+
+  <main class="flex-1 p-12 px-20">
+    <!-- Toast Notification -->
+    <div *ngIf="toast() as t" class="fixed bottom-12 left-1/2 -translate-x-1/2 z-[1000] min-w-[360px] animate-fade-in">
+      <div class="glass-card p-5 py-4 flex items-center gap-4 border-l-4 shadow-2xl"
+        [ngClass]="t.type === 'success' ? 'border-l-emerald-500' : 'border-l-amber-500'">
+        <lucide-angular *ngIf="t.type === 'success'" [img]="CheckCircleIcon" class="text-emerald-400"
+          size="22"></lucide-angular>
+        <lucide-angular *ngIf="t.type === 'alert'" [img]="AlertCircleIcon" class="text-amber-400"
+          size="22"></lucide-angular>
+        <p class="text-sm font-semibold">{{t.message}}</p>
+      </div>
+    </div>
+
+    <!-- Schedule Modal -->
+    <div *ngIf="isScheduleModalOpen()" class="fixed inset-0 z-[2000] flex items-center justify-center p-6">
+      <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-md" (click)="isScheduleModalOpen.set(false)"></div>
+      <div class="glass-card relative w-full max-w-xl shadow-2xl p-0 overflow-hidden animate-fade-in border-white/10">
+        <div class="p-8 border-b border-white/5 flex justify-between items-center bg-white/5">
+          <h3 class="text-2xl font-bold">Schedule New Interview</h3>
+          <button (click)="isScheduleModalOpen.set(false)"
+            class="p-2 text-slate-400 hover:text-white transition-all hover:rotate-90">
+            <lucide-angular [img]="XIcon" size="24"></lucide-angular>
+          </button>
+        </div>
+        <div class="p-8 space-y-6">
+          <div class="space-y-2">
+            <label>Candidate Name</label>
+            <input type="text" [(ngModel)]="newInterview.candidate" placeholder="e.g. Rahul Sharma" />
+          </div>
+          <div class="grid grid-cols-2 gap-6">
+            <div class="space-y-2">
+              <label>Position</label>
+              <select [(ngModel)]="newInterview.pos">
+                <option>Senior Backend Engineer</option>
+                <option>Product Manager</option>
+                <option>UI/UX Designer</option>
+              </select>
+            </div>
+            <div class="space-y-2">
+              <label>Round</label>
+              <select [(ngModel)]="newInterview.round">
+                <option>Technical Round 1</option>
+                <option>System Design</option>
+                <option>Behavioral</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Dynamic Interviewers Selection -->
+          <div class="space-y-2">
+            <label>Interviewers</label>
+            <div
+              class="flex flex-wrap gap-2 p-4 bg-slate-900/60 border border-slate-800 rounded-2xl min-h-[60px] items-center">
+              <span *ngFor="let name of newInterview.selectedInterviewers"
+                class="px-3 py-1.5 bg-indigo-500/20 rounded-xl border border-indigo-500/30 text-xs flex items-center gap-2 text-indigo-300 animate-fade-in">
+                {{name}} <lucide-angular [img]="XIcon" size="12"
+                  class="cursor-pointer hover:text-white transition-colors"
+                  (click)="toggleInterviewer(name)"></lucide-angular>
+              </span>
+              <div class="relative group">
+                <button class="p-2 hover:bg-white/5 rounded-full transition-colors">
+                  <lucide-angular [img]="PlusIcon" size="18" class="text-slate-500 cursor-pointer"></lucide-angular>
+                </button>
+                <div
+                  class="absolute left-0 bottom-full mb-3 hidden group-hover:block dropdown-glass min-w-[240px] z-50 shadow-2xl">
+                  <p class="text-[10px] font-bold text-slate-500 mb-2 px-2 uppercase tracking-widest">Select Panel
+                    Members</p>
+                  <div class="max-h-48 overflow-y-auto space-y-1 custom-scrollbar">
+                    <div *ngFor="let i of availableInterviewers()" (click)="toggleInterviewer(i.name)"
+                      class="text-xs p-3 hover:bg-indigo-500/10 rounded-xl cursor-pointer flex justify-between items-center transition-all">
+                      {{i.name}}
+                      <lucide-angular *ngIf="newInterview.selectedInterviewers.includes(i.name)" [img]="CheckCircleIcon"
+                        size="14" class="text-emerald-400"></lucide-angular>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-6">
+            <div class="space-y-2">
+              <label>Date</label>
+              <input type="date" [(ngModel)]="newInterview.date" />
+            </div>
+            <div class="space-y-2">
+              <label>Time</label>
+              <input type="time" [(ngModel)]="newInterview.time" />
+            </div>
+          </div>
+          <button class="btn-primary w-full justify-center mt-4 text-lg py-4" (click)="confirmSchedule()">
+            Confirm Schedule
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Candidate Modal -->
+    <div *ngIf="isCandidateModalOpen()" class="fixed inset-0 z-[2000] flex items-center justify-center p-6">
+      <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-md" (click)="isCandidateModalOpen.set(false)"></div>
+      <div class="glass-card relative w-full max-w-xl shadow-2xl p-0 overflow-hidden animate-fade-in border-white/10">
+        <div class="p-8 border-b border-white/5 flex justify-between items-center bg-white/5">
+          <h3 class="text-2xl font-bold">Add New Candidate</h3>
+          <button (click)="isCandidateModalOpen.set(false)" class="p-2 text-slate-400 hover:text-white transition-all">
+            <lucide-angular [img]="XIcon" size="24"></lucide-angular>
+          </button>
+        </div>
+        <div class="p-8 space-y-6">
+          <div class="space-y-2">
+            <label>Full Name</label>
+            <input type="text" [(ngModel)]="newCandidate.name" placeholder="Candidate Name" />
+          </div>
+          <div class="space-y-2">
+            <label>Email Address</label>
+            <input type="email" [(ngModel)]="newCandidate.email" placeholder="email@example.com" />
+          </div>
+          <div class="grid grid-cols-2 gap-6">
+            <div class="space-y-2">
+              <label>Position</label>
+              <select [(ngModel)]="newCandidate.pos">
+                <option>Senior Backend</option>
+                <option>Product Manager</option>
+                <option>UI/UX Designer</option>
+              </select>
+            </div>
+            <div class="space-y-2">
+              <label>Stage</label>
+              <select [(ngModel)]="newCandidate.stage">
+                <option>Screening</option>
+                <option>Round 1</option>
+                <option>Round 2</option>
+                <option>Final</option>
+              </select>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <label>Remarks</label>
+            <textarea [(ngModel)]="newCandidate.remarks" placeholder="Add candidate remarks..."
+              class="w-full h-32"></textarea>
+          </div>
+          <button class="btn-primary w-full justify-center mt-4 text-lg py-4" (click)="addCandidate()">
+            Add Candidate
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Update Status Modal -->
+    <div *ngIf="isUpdateStatusModalOpen() && editingCandidate() as c"
+      class="fixed inset-0 z-[2000] flex items-center justify-center p-6">
+      <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-md" (click)="isUpdateStatusModalOpen.set(false)"></div>
+      <div class="glass-card relative w-full max-w-xl shadow-2xl p-0 overflow-hidden animate-fade-in border-white/10">
+        <div class="p-8 border-b border-white/5 flex justify-between items-center bg-white/5">
+          <h3 class="text-2xl font-bold">Update Candidate: {{c.name}}</h3>
+          <button (click)="isUpdateStatusModalOpen.set(false)"
+            class="p-2 text-slate-400 hover:text-white transition-all">
+            <lucide-angular [img]="XIcon" size="24"></lucide-angular>
+          </button>
+        </div>
+        <div class="p-8 space-y-6">
+          <div class="grid grid-cols-2 gap-6">
+            <div class="space-y-2">
+              <label>Current Stage</label>
+              <select [(ngModel)]="c.stage">
+                <option>Screening</option>
+                <option>Round 1</option>
+                <option>Round 2</option>
+                <option>Final</option>
+              </select>
+            </div>
+            <div class="space-y-2">
+              <label>Status</label>
+              <select [(ngModel)]="c.status">
+                <option>Applied</option>
+                <option>In Review</option>
+                <option>Scheduling</option>
+                <option>Round 1 Cleared</option>
+                <option>Round 2 Cleared</option>
+                <option>High Intent</option>
+                <option>Offer Extended</option>
+                <option>Rejected</option>
+              </select>
+            </div>
+          </div>
+          <div class="space-y-4 pt-4 border-t border-white/5"
+            *ngIf="c.status.includes('Cleared') || c.status === 'High Intent'">
+            <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Schedule Next Round</p>
+            <div class="grid grid-cols-2 gap-6">
+              <div class="space-y-2">
+                <label>Next Round Date</label>
+                <input type="date" [(ngModel)]="c.nextRoundDate" />
+              </div>
+              <div class="space-y-2">
+                <label>Preferred Time</label>
+                <input type="time" [(ngModel)]="c.nextRoundTime" />
+              </div>
+            </div>
+          </div>
+          <button class="btn-primary w-full justify-center mt-4 text-lg py-4" (click)="updateCandidateStatus()">
+            Update Status & Schedule
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard Tab -->
+    <div *ngIf="activeTab() === 'dashboard'" class="animate-fade-in">
+      <header class="mb-12 flex justify-between items-end">
+        <div>
+          <h1 class="text-5xl mb-3 font-extrabold tracking-tight">Welcome back, Pooja</h1>
+          <p class="text-slate-400 text-lg">Here's what's happening with your recruitment pipelines today.</p>
+        </div>
+        <div class="flex gap-6">
+          <div class="glass-card !p-6 py-4 flex items-center gap-4 cursor-pointer hover:!ring-indigo-500/50">
+            <div class="p-3 bg-indigo-500/10 rounded-2xl text-indigo-400">
+              <lucide-angular [img]="BarChart3Icon" size="24"></lucide-angular>
+            </div>
+            <div>
+              <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Daily Schedule</p>
+              <p class="text-xl font-extrabold">12 Active</p>
+            </div>
+          </div>
+          <div class="glass-card !p-6 py-4 flex items-center gap-4 cursor-pointer hover:!ring-emerald-500/50">
+            <div class="p-3 bg-emerald-500/10 rounded-2xl text-emerald-400">
+              <lucide-angular [img]="UserCheckIcon" size="24"></lucide-angular>
+            </div>
+            <div>
+              <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Hiring Velocity</p>
+              <p class="text-xl font-extrabold">14.2 Days</p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="grid grid-cols-12 gap-10">
+        <div class="col-span-8">
+          <section class="glass-card mb-10">
+            <div class="flex items-center justify-between mb-8">
+              <h3 class="text-2xl flex items-center gap-3 font-bold">
+                <lucide-angular [img]="CalendarIcon" class="text-indigo-400" size="28"></lucide-angular>
+                Upcoming Interviews
+              </h3>
+              <div class="relative w-80">
+                <lucide-angular [img]="SearchIcon" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+                  size="18"></lucide-angular>
+                <input type="text" placeholder="Search interviews..." [ngModel]="searchQuery()"
+                  (ngModelChange)="searchQuery.set($event)" class="!pl-12 !py-3 bg-slate-950/40" />
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <div *ngFor="let item of filteredInterviews()"
+                class="flex items-center justify-between p-6 bg-white/5 rounded-3xl border border-white/5 hover:border-indigo-500/30 hover:bg-white/[0.08] transition-all cursor-pointer group">
+                <div class="flex items-center gap-5">
+                  <div
+                    class="p-4 bg-indigo-500/10 rounded-2xl text-indigo-400 group-hover:scale-110 transition-transform">
+                    <lucide-angular [img]="ClockIcon" size="24"></lucide-angular>
+                  </div>
+                  <div>
+                    <h4 class="font-bold text-lg group-hover:text-indigo-300 transition-colors">{{item.candidate}}</h4>
+                    <p class="text-sm text-slate-400">{{item.round}} • {{item.time}}</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-8">
+                  <div class="flex -space-x-3">
+                    <div *ngFor="let inter of item.interviewers"
+                      class="w-10 h-10 rounded-full bg-slate-800 border-2 border-slate-950 flex items-center justify-center text-xs font-bold ring-2 ring-white/5"
+                      [title]="inter">
+                      {{inter.charAt(0)}}
+                    </div>
+                  </div>
+                  <span class="badge"
+                    [ngClass]="item.status === 'Confirmed' ? 'badge-success' : 'badge-warning'">{{item.status}}</span>
+                  <button (click)="$event.stopPropagation(); deleteInterview(item.id)"
+                    class="p-2 text-slate-500 hover:text-rose-400 transition-all bg-white/5 rounded-xl hover:bg-rose-500/10 hover:scale-110">
+                    <lucide-angular [img]="TrashIcon" size="18"></lucide-angular>
+                  </button>
+                  <lucide-angular [img]="ChevronRightIcon" size="20"
+                    class="text-slate-600 group-hover:text-white transition-colors"></lucide-angular>
+                </div>
+              </div>
+              <div *ngIf="filteredInterviews().length === 0" class="text-center py-12 text-slate-500 text-lg italic">No
+                interviews match your search.</div>
+            </div>
+
+            <button
+              class="w-full mt-10 py-4 text-sm font-bold text-slate-400 hover:text-white transition-all flex items-center justify-center gap-3 border-t border-white/5 group"
+              (click)="openFullCalendar()">
+              View Full Calendar <lucide-angular [img]="ArrowRightIcon" size="18"
+                class="group-hover:translate-x-2 transition-transform"></lucide-angular>
+            </button>
+          </section>
+        </div>
+
+        <div class="col-span-4 space-y-10">
+          <section class="glass-card">
+            <h3 class="text-xl mb-8 flex items-center gap-3 font-bold">
+              <lucide-angular [img]="UsersIcon" class="text-indigo-400" size="24"></lucide-angular>
+              Interviewer Load
+            </h3>
+            <div class="space-y-5">
+              <div *ngFor="let i of filteredInterviewers().slice(0, 3)"
+                class="bg-white/5 p-6 rounded-3xl border border-white/5 hover:border-indigo-500/20 transition-all cursor-pointer">
+                <div class="flex items-center justify-between mb-5">
+                  <div class="flex items-center gap-4">
+                    <div
+                      class="w-12 h-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-black text-lg">
+                      {{i.name.charAt(0)}}</div>
+                    <div>
+                      <h4 class="font-bold text-base">{{i.name}}</h4>
+                      <p class="text-xs text-slate-500">{{i.role}}</p>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-[10px] text-slate-500 uppercase font-black">Load</p>
+                    <p class="text-sm font-black text-indigo-400">{{i.load}}/15</p>
+                  </div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <span *ngFor="let skill of i.skills"
+                    class="text-[10px] px-2.5 py-1.5 bg-slate-900/80 rounded-lg border border-white/5 text-slate-400">{{skill}}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="glass-card bg-indigo-600/10 !border-indigo-500/40 relative overflow-hidden group">
+            <div
+              class="absolute -right-8 -top-8 w-24 h-24 bg-indigo-500/20 blur-3xl group-hover:bg-indigo-500/40 transition-all">
+            </div>
+            <h3 class="text-xl font-bold mb-3">AI Optimization</h3>
+            <p class="text-sm text-slate-400 mb-6 leading-relaxed">Our engine is optimizing 14 potential conflicts for
+              next week's schedule.</p>
+            <button class="flex items-center gap-2 text-indigo-400 text-sm font-bold hover:gap-4 transition-all">
+              Launch Optimizer <lucide-angular [img]="ArrowRightIcon" size="14"></lucide-angular>
+            </button>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- Candidates Tab -->
+    <div *ngIf="activeTab() === 'candidates'" class="animate-fade-in">
+      <header class="mb-12 flex justify-between items-center">
+        <div>
+          <h1 class="text-5xl mb-3 font-extrabold tracking-tight">Candidates</h1>
+          <p class="text-slate-400 text-lg">Manage your current active pipeline and candidate statuses.</p>
+        </div>
+        <div class="flex gap-6">
+          <div class="relative w-80">
+            <lucide-angular [img]="SearchIcon" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+              size="18"></lucide-angular>
+            <input type="text" placeholder="Search candidates..." [ngModel]="searchQuery()"
+              (ngModelChange)="searchQuery.set($event)" class="!pl-12 !py-3 bg-slate-950/40" />
+          </div>
+          <button class="btn-primary" (click)="isCandidateModalOpen.set(true)">
+            <lucide-angular [img]="PlusIcon" size="20"></lucide-angular> Add Candidate
+          </button>
+        </div>
+      </header>
+
+      <section class="glass-card p-0 overflow-hidden border-white/10">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-white/5 border-b border-white/5">
+                <th class="p-6 text-xs uppercase font-black text-slate-500 tracking-widest">Candidate</th>
+                <th class="p-6 text-xs uppercase font-black text-slate-500 tracking-widest">Position</th>
+                <th class="p-6 text-xs uppercase font-black text-slate-500 tracking-widest">Stage</th>
+                <th class="p-6 text-xs uppercase font-black text-slate-500 tracking-widest">Status</th>
+                <th class="p-6 text-xs uppercase font-black text-slate-500 tracking-widest">Remarks</th>
+                <th class="p-6 text-xs uppercase font-black text-slate-500 tracking-widest">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+              <tr *ngFor="let c of filteredCandidates()" class="hover:bg-white/[0.03] transition-colors group">
+                <td class="p-6">
+                  <div class="flex items-center gap-4">
+                    <div
+                      class="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center font-black text-indigo-400 text-lg border border-white/10">
+                      {{c.name.charAt(0)}}</div>
+                    <div>
+                      <p class="font-bold text-white">{{c.name}}</p>
+                      <p class="text-xs text-slate-500">{{c.email}}</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="p-6 text-sm font-semibold text-slate-300">{{c.pos}}</td>
+                <td class="p-6"><span
+                    class="text-[10px] font-bold px-3 py-1.5 bg-slate-800 rounded-lg border border-white/5 text-slate-400 uppercase">{{c.stage}}</span>
+                </td>
+                <td class="p-6"><span class="badge"
+                    [ngClass]="c.status === 'Applied' ? 'badge-warning' : 'badge-success'">{{c.status}}</span></td>
+                <td class="p-6">
+                  <span class="text-xs text-slate-400 italic truncate max-w-[200px] block">{{c.remarks || 'No
+                    remarks'}}</span>
+                </td>
+                <td class="p-6">
+                  <div class="flex gap-2">
+                    <button (click)="openUpdateStatus(c)"
+                      class="p-3 text-slate-500 hover:text-white transition-all bg-white/5 rounded-xl hover:bg-white/10 hover:-translate-y-1"
+                      title="Update Status">
+                      <lucide-angular [img]="FileTextIcon" size="18"></lucide-angular>
+                    </button>
+                    <button (click)="deleteCandidate(c.id)"
+                      class="p-3 text-slate-500 hover:text-rose-400 transition-all bg-white/5 rounded-xl hover:bg-rose-500/10 hover:-translate-y-1"
+                      title="Delete Candidate">
+                      <lucide-angular [img]="TrashIcon" size="18"></lucide-angular>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr *ngIf="filteredCandidates().length === 0">
+                <td colSpan="5" class="p-20 text-center text-slate-500 text-lg italic">No candidates found matching your
+                  criteria.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- Calendar View Tab -->
+    <div *ngIf="activeTab() === 'calendar'" class="animate-fade-in">
+      <header class="mb-8 flex justify-between items-center">
+        <div>
+          <h1 class="text-5xl mb-3 font-extrabold tracking-tight">Interview Calendar</h1>
+          <p class="text-slate-400 text-lg">Schedule and manage all interviews in one place.</p>
+        </div>
+        <button class="btn-primary" (click)="isScheduleModalOpen.set(true)">
+          <lucide-angular [img]="PlusIcon" size="20"></lucide-angular> Schedule Interview
+        </button>
+      </header>
+
+      <!-- Calendar Controls -->
+      <div class="glass-card !p-6 mb-6 flex justify-between items-center">
+        <div class="flex items-center gap-6">
+          <button (click)="goToToday()"
+            class="px-6 py-2.5 bg-white/5 hover:bg-white/10 rounded-xl font-semibold text-sm transition-all border border-white/10 hover:border-indigo-500/30">
+            Today
+          </button>
+          <div class="flex items-center gap-3">
+            <button (click)="previousMonth()"
+              class="p-2 hover:bg-white/10 rounded-lg transition-all text-slate-400 hover:text-white">
+              <lucide-angular [img]="ChevronLeftIcon" size="20"></lucide-angular>
+            </button>
+            <button (click)="nextMonth()"
+              class="p-2 hover:bg-white/10 rounded-lg transition-all text-slate-400 hover:text-white">
+              <lucide-angular [img]="ChevronRightIcon" size="20"></lucide-angular>
+            </button>
+          </div>
+          <h2 class="text-2xl font-bold">{{monthName()}} {{currentYear()}}</h2>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="flex bg-white/5 rounded-xl p-1 border border-white/10">
+            <button (click)="calendarView.set('month')" [class.bg-indigo-500]="calendarView() === 'month'"
+              [class.text-white]="calendarView() === 'month'"
+              class="px-5 py-2 rounded-lg text-sm font-semibold transition-all">
+              Month
+            </button>
+            <button (click)="calendarView.set('week')" [class.bg-indigo-500]="calendarView() === 'week'"
+              [class.text-white]="calendarView() === 'week'"
+              class="px-5 py-2 rounded-lg text-sm font-semibold transition-all">
+              Week
+            </button>
+          </div>
+          <button (click)="syncWithOutlook()"
+            class="p-3 hover:bg-white/10 rounded-xl transition-all text-slate-400 hover:text-white border border-white/10 hover:border-indigo-500/30">
+            <lucide-angular [img]="RefreshIcon" size="18"></lucide-angular>
+          </button>
+        </div>
+      </div>
+
+      <!-- Calendar Grid -->
+      <div class="glass-card !p-0 overflow-hidden border-white/10">
+        <!-- Week Days Header -->
+        <div class="grid grid-cols-7 border-b border-white/10 bg-white/5">
+          <div *ngFor="let day of ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']"
+            class="p-4 text-center text-xs font-black uppercase tracking-widest text-slate-500">
+            {{day}}
+          </div>
+        </div>
+
+        <!-- Calendar Days -->
+        <div class="grid grid-cols-7 auto-rows-fr">
+          <div *ngFor="let calDay of calendarDays()" [class.bg-white/[0.02]]="!calDay.isCurrentMonth"
+            [class.border-indigo-500/30]="calDay.isToday"
+            class="min-h-[140px] border-r border-b border-white/5 p-3 hover:bg-white/[0.03] transition-all cursor-pointer group relative">
+
+            <!-- Day Number -->
+            <div class="flex justify-between items-start mb-2">
+              <span [class.text-slate-600]="!calDay.isCurrentMonth"
+                [class.text-white]="calDay.isCurrentMonth && !calDay.isToday" [class.bg-indigo-500]="calDay.isToday"
+                [class.text-white]="calDay.isToday" [class.w-8]="calDay.isToday" [class.h-8]="calDay.isToday"
+                [class.flex]="calDay.isToday" [class.items-center]="calDay.isToday"
+                [class.justify-center]="calDay.isToday" [class.rounded-full]="calDay.isToday" class="text-sm font-bold">
+                {{calDay.day}}
+              </span>
+
+              <!-- Add Interview Button (shows on hover) -->
+              <button *ngIf="calDay.isCurrentMonth"
+                (click)="isScheduleModalOpen.set(true); newInterview.date = formatDateToYYYYMMDD(calDay.date)"
+                class="opacity-0 group-hover:opacity-100 p-1 hover:bg-indigo-500/20 rounded-lg transition-all">
+                <lucide-angular [img]="PlusIcon" size="14" class="text-indigo-400"></lucide-angular>
+              </button>
+            </div>
+
+            <!-- Interviews for this day -->
+            <div class="space-y-1.5">
+              <div *ngFor="let interview of calDay.interviews.slice(0, 3)"
+                class="text-[10px] px-2 py-1.5 rounded-lg font-semibold transition-all hover:scale-105 cursor-pointer relative overflow-hidden"
+                [class.bg-indigo-500/20]="interview.status === 'Confirmed'"
+                [class.text-indigo-300]="interview.status === 'Confirmed'"
+                [class.border-indigo-500/30]="interview.status === 'Confirmed'"
+                [class.bg-amber-500/20]="interview.status === 'Pending'"
+                [class.text-amber-300]="interview.status === 'Pending'"
+                [class.border-amber-500/30]="interview.status === 'Pending'" class="border"
+                [title]="interview.candidate + ' - ' + interview.round + ' at ' + interview.time">
+                <div class="space-y-0.5">
+                  <div class="flex items-center justify-between">
+                    <span class="truncate">{{interview.candidate}}</span>
+                    <span class="text-[8px] opacity-70">{{interview.time.split(' ')[0]}}</span>
+                  </div>
+                  <div class="text-[8px] opacity-60 flex items-center gap-1">
+                    <lucide-angular [img]="UserCheckIcon" size="8"></lucide-angular>
+                    {{interview.round}}
+                  </div>
+                </div>
+              </div>
+
+              <!-- More indicator -->
+              <div *ngIf="calDay.interviews.length > 3" class="text-[10px] text-slate-500 font-bold pl-2">
+                +{{calDay.interviews.length - 3}} more
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upcoming Interviews Sidebar -->
+      <div class="mt-8 glass-card">
+        <h3 class="text-xl font-bold mb-6 flex items-center gap-3">
+          <lucide-angular [img]="CalendarIcon" class="text-indigo-400" size="24"></lucide-angular>
+          Upcoming This Week
+        </h3>
+        <div class="space-y-3">
+          <div *ngFor="let interview of interviews().slice(0, 5)"
+            class="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-all cursor-pointer group">
+            <div class="flex items-center gap-4">
+              <div class="p-3 bg-indigo-500/10 rounded-xl text-indigo-400 group-hover:scale-110 transition-transform">
+                <lucide-angular [img]="ClockIcon" size="20"></lucide-angular>
+              </div>
+              <div>
+                <h4 class="font-bold text-sm">{{interview.candidate}}</h4>
+                <p class="text-xs text-slate-400">{{interview.round}} • {{interview.date}} • {{interview.time}}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="flex -space-x-2">
+                <div *ngFor="let inter of interview.interviewers"
+                  class="w-8 h-8 rounded-full bg-slate-800 border-2 border-slate-950 flex items-center justify-center text-[10px] font-bold"
+                  [title]="inter">
+                  {{inter.charAt(0)}}
+                </div>
+              </div>
+              <span class="badge" [ngClass]="interview.status === 'Confirmed' ? 'badge-success' : 'badge-warning'">
+                {{interview.status}}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reports -->
+    <div *ngIf="activeTab() === 'reports'" class="animate-fade-in">
+      <header class="mb-12 text-center">
+        <h1 class="text-5xl mb-3 font-extrabold tracking-tight">Hiring Analytics</h1>
+        <p class="text-slate-400 text-lg">Visualizing pipeline health, interviewer load, and hiring velocity.</p>
+      </header>
+      <div class="grid grid-cols-4 gap-8 mb-12">
+        <div class="glass-card !p-8 text-center hover:!ring-indigo-500/30 transition-all group" *ngFor="let m of [
+          {l:'Interviews (Week)', v:'42', t:'+12%', i:CalendarIcon, c:'indigo'},
+          {l:'Avg Feedback Time', v:'4.2h', t:'-18%', i:ClockIcon, c:'emerald'},
+          {l:'Offer Acceptance', v:'78%', t:'+5%', i:UserCheckIcon, c:'blue'},
+          {l:'Pipeline Velocity', v:'12d', t:'-2d', i:TrendingUpIcon, c:'purple'}
+        ]">
+          <div
+            class="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+            <lucide-angular [img]="m.i" size="24"
+              class="text-slate-400 group-hover:text-white transition-colors"></lucide-angular>
+          </div>
+          <p class="text-4xl font-extrabold mb-2 tracking-tighter">{{m.v}}</p>
+          <p class="text-[10px] text-slate-500 uppercase tracking-widest font-black mb-3">{{m.l}}</p>
+          <div
+            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">
+            <lucide-angular [img]="TrendingUpIcon" size="12"></lucide-angular> {{m.t}}
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card min-h-[400px] flex items-center justify-center border-white/5">
+        <div class="text-center">
+          <lucide-angular [img]="BarChart3Icon" size="48" class="text-indigo-500/20 mb-6 mx-auto"></lucide-angular>
+          <h3 class="text-2xl font-bold mb-2">Live Throughput Data</h3>
+          <p class="text-slate-500">Visualization currently synthesizing from live scheduling streams...</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer
+    class="p-12 text-center text-slate-600 text-[10px] uppercase font-bold tracking-[0.2em] border-t border-white/5">
+    InterviewSlot Technical Platform • v1.0.0 • Built for High Performance Recruiting Teams
+  </footer>
+</div>
